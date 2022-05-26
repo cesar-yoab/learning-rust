@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::process;
 
 #[derive(Parser)]
 #[clap(name = "NotGrep")]
@@ -38,6 +39,39 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+
+    // Check that flags are used properly
+    if args.extended_regexp && args.fixed_strings {
+        eprintln!("You can only use one of --extended-regexp or --fixed-strings.");
+        process::exit(1);
+    } else if args.extended_regexp && args.basic_regexp || args.fixed_strings && args.basic_regexp {
+        eprintln!("You cannot use --basic-regexp with --extended-regexp or --fixed-strings.");
+        process::exit(1);
+    }
+
+    let config = notgrep::Config::new(
+        args.filename.clone(),
+        args.pattern.clone(),
+        args.case_sensitive,
+        args.quiet,
+        args.count,
+    );
+    if !args.extended_regexp {
+        if let Err(e) = notgrep::run_extended(config) {
+            eprintln!("Application error: {}", e);
+            process::exit(1);
+        }
+    } else if args.fixed_strings {
+        if let Err(e) = notgrep::run_fixed_str(config) {
+            eprintln!("Application error: {}", e);
+            process::exit(1);
+        }
+    } else {
+        if let Err(e) = notgrep::run_basic(config) {
+            eprintln!("Application error: {}", e);
+            process::exit(1);
+        }
+    }
 
     println!("Searching for pattern: {}", args.pattern);
     println!("On file: {}", args.filename);
